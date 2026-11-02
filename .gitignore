@@ -1,0 +1,14 @@
+# Do not publish macro-enabled workbooks or extracted OLE binaries by default.
+*.xlsm
+*.xlsb
+*.xls
+*.xlam
+*.bin
+*.tmp
+~$*
+
+# Local/editor files
+.vscode/
+.idea/
+*.log
+
