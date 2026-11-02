@@ -1,273 +1,176 @@
 # Excel VBA SAP Purchasing Info Record Updater
 
-An Excel VBA automation tool that reads purchasing data from a worksheet and updates SAP purchasing info records through SAP GUI Scripting.
+An Excel VBA automation example that updates SAP purchasing info records through SAP GUI Scripting and transaction ME12.
 
-The application is designed for procurement operations where the same purchasing-info-record maintenance steps must be repeated for multiple supplier, material, purchasing-organization, plant, and price combinations.
+The project is aimed at procurement operations where supplier, material, purchasing-organization, plant, and price values must be entered repeatedly in Excel and SAP.
 
-> Important: The workbook reviewed for this documentation contains sample business data and identifying metadata. Do not publish that original workbook. Create a sanitized demonstration copy with synthetic data before uploading it to GitHub.
+> Portfolio scope: this public repository contains exported VBA source and synthetic input data. The original macro-enabled workbook is intentionally not included because it may contain company, system, or business data.
 
-## Project Overview
+## Business problem
 
-The application provides an Excel-based input table and a `RUN` button. When the macro runs, it validates each input row, opens SAP transaction `ME12`, enters the supplier/material/purchasing-organization/plant combination, retrieves the purchasing info-record number, updates the price, saves the record, and writes the SAP result back to Excel.
+Maintaining purchasing info records manually requires repeated data entry, SAP screen navigation, and manual copying of results back into a tracking sheet. This creates avoidable effort and makes it harder to identify which records succeeded or failed during a batch.
 
-The tool addresses these operational problems:
+## How the automation helps
 
-- Repeated manual entry of the same data in Excel and SAP.
-- Time spent navigating SAP screens for each record.
-- Inconsistent validation of required fields before SAP entry.
-- Difficulty identifying which rows succeeded or failed during a batch.
-- Manual copying of info-record numbers and SAP status messages back into a tracking sheet.
+The macro reads input rows from Excel, validates required fields, opens SAP transaction ME12, enters the purchasing-info-record key, updates the price, and writes the returned info-record number and SAP status back to the worksheet.
 
-## Implemented Features
+The benefits described here are qualitative. This repository contains no measured time-savings or error-rate results.
 
-- One-sheet Excel input and output template.
-- Manual execution through a worksheet shape labeled `RUN`.
-- Connection to the first active SAP GUI connection and session.
-- SAP GUI Scripting automation for transaction `ME12`.
-- Row-by-row processing from row 2 through the last non-empty supplier-number row.
-- Validation of supplier number, material number, purchasing organization, plant, and price.
-- Price formatting to two decimal places before entry into SAP.
-- Retrieval of the SAP info-record number into column F.
-- Status updates in column H, including SAP status-bar text when available.
-- Optional-popup handling during navigation and save confirmation.
-- Per-row error handling that marks the failed row and continues with the next row.
-- Color-coded output for extracted, successful, processing, and failed states.
-- Completion and connection-error message boxes for the operator.
+## Implemented features
 
-## Workbook Layout
+The following behavior is verified in Module1.bas:
 
-The reviewed workbook contains one visible worksheet named `Sheet1`. Its used range is `A1:H2`; the second row is a sample data row.
+- Manual execution through the public procedure SAP_Final_Solution_V2.
+- Processing from row 2 through the last non-empty supplier-number row.
+- Validation of supplier, material, purchasing organization, plant, and numeric price.
+- Price formatting to two decimal places before SAP entry.
+- Connection to the first active SAP GUI connection and first SAP session.
+- SAP GUI Scripting navigation to transaction ME12.
+- Info-record number written to column F.
+- SAP status or processing result written to column H.
+- Optional popup handling during navigation and save confirmation.
+- Row-level error handling that marks a failed row and continues with later rows.
+- Color-coded processing, success, and failure states.
+- Completion and connection-error message boxes.
 
-| Column | Header | Purpose | Used by the macro |
-|---|---|---|---|
-| A | Supplier No. | SAP supplier number | Yes |
-| B | Description | Human-readable supplier description | No; informational only |
-| C | Material Number | SAP material number | Yes |
-| D | Purchasing Org. | SAP purchasing organization | Yes |
-| E | Plant | SAP plant | Yes |
-| F | inforecord number | Info-record number returned by SAP | Written by the macro |
-| G | Price | Price to enter in SAP | Yes |
-| H | SAP Status | Processing result or SAP status message | Written by the macro |
+The source does not implement authentication, SAP-session selection, scheduling, external logging, rollback, a UserForm, or a dry-run mode.
 
-The `RUN` rectangle is assigned to `SAP_Final_Solution_V2`. There are no formulas, Excel Tables, PivotTables, charts, images, data-validation rules, or additional worksheets in the reviewed file.
+## Repository contents
 
-## Application Workflow
+| File | Purpose |
+|---|---|
+| Module1.bas | Main SAP automation procedure and helper procedures |
+| Sheet1.cls | Exported worksheet document metadata; no event logic |
+| ThisWorkbook.cls | Exported workbook document metadata; no event logic |
+| sample_input.csv | Synthetic input example |
+| .gitignore | Excludes macro-enabled workbooks, OLE binaries, temporary files, and logs |
+| README.md | Project, setup, workflow, limitation, and portfolio documentation |
 
-1. Enter one or more records in columns A, C, D, E, and G. Column B may contain a description for reference.
-2. Open SAP GUI, log in to the required system, and leave an active SAP session available.
-3. Open the macro-enabled workbook and allow macros only when the file is trusted.
-4. Click the `RUN` shape on the worksheet.
-5. The macro attaches to the first active SAP GUI connection and session.
-6. It changes the output headers to `inforecord number` and `SAP Status`, then identifies the last row using column A.
-7. For each row, it clears the previous info-record value and sets the status to `Processing...`.
-8. It checks that supplier number, material number, purchasing organization, plant, and price are present and valid.
-9. Invalid rows are skipped, marked with a descriptive message in column H, and filled red.
-10. Valid rows open SAP transaction `ME12` and enter the supplier, material, purchasing organization, and plant values.
-11. The macro reads the info-record number from SAP and writes it to column F as text.
-12. It navigates to the purchasing-organization data, handles the optional popup recorded in the SAP workflow, and enters the price.
-13. It validates the price in SAP, saves the record, and accepts the expected confirmation dialog when present.
-14. The SAP status-bar message is written to column H. If the status bar is empty, the macro uses `Updated successfully`.
-15. Successful output cells are filled green. A row-level error is written to column H and filled red, then processing continues.
-16. After all rows are attempted, the macro displays a completion message explaining where the info-record numbers and processing results were written.
+The repository does not include an executable XLSM workbook, worksheet shape, screenshots, automated tests, or a GitHub Actions workflow.
 
-```mermaid
-flowchart LR
-    A[Excel input rows] --> B[Click RUN]
-    B --> C{SAP GUI connection and session available?}
-    C -- No --> D[Connection error message]
-    C -- Yes --> E[Validate row inputs]
-    E -- Invalid --> F[Write skip message and mark row red]
-    E -- Valid --> G[Open ME12 and enter key fields]
-    G --> H[Read info-record number]
-    H --> I[Enter price and save]
-    I --> J[Write SAP status and mark row green]
-    F --> K[Continue with next row]
-    J --> K
-    K --> L[Completion message]
-```
+## Workbook layout
 
-## VBA Components
-
-| Component | Type | Observed responsibility |
+| Column | Header | Use |
 |---|---|---|
-| `Module1` | Standard VBA module | Main SAP automation routine and helper procedures |
-| `ThisWorkbook` | Workbook document module | Attribute declarations only; no workbook event procedure was found |
-| `Sheet1` | Worksheet document module | Attribute declarations only; no worksheet event procedure was found |
-| UserForms | None found | No form-based user interface is implemented |
+| A | Supplier No. | SAP supplier number; also determines the last row |
+| B | Description | Informational only; not sent to SAP |
+| C | Material Number | SAP material number |
+| D | Purchasing Org. | SAP purchasing organization |
+| E | Plant | SAP plant |
+| F | inforecord number | Written by the macro after SAP returns a value |
+| G | Price | Numeric price sent to SAP |
+| H | SAP Status | Processing result or SAP status-bar text |
 
-### Procedures in `Module1`
+sample_input.csv is input-only, so columns F and H are generated in the Excel workbook during processing.
 
-- `SAP_Final_Solution_V2`: Main public procedure that validates Excel input, drives SAP, writes results, and reports completion.
-- `WaitForSAPV2`: Waits for the SAP session to stop being busy, with a 30-second timeout.
-- `SAPWindowExistsV2`: Checks whether an SAP window exists without raising an error.
-- `SAPControlExistsV2`: Checks whether a specific SAP control exists.
-- `GetSAPStatusTextV2`: Reads the SAP status-bar text.
-- `GetSAPStatusTypeV2`: Reads the SAP status-bar message type.
-- `MarkSAPRowErrorV2`: Writes a row error to column H and applies the red error fill.
+## Application workflow
 
-## Technical Details
+1. Use the active Excel worksheet.
+2. Connect to the first available SAP GUI connection and session.
+3. Find the last used row from column A.
+4. Set each row to Processing... and validate the required values.
+5. Open ME12 and enter supplier, material, purchasing organization, and plant.
+6. Read the SAP info-record number into column F.
+7. Navigate to the purchasing-organization data and enter the price.
+8. Validate and save the SAP record.
+9. Write the SAP status to column H and continue with the next row.
 
-### Languages and technologies
+## Technologies and requirements
 
-- Visual Basic for Applications (VBA).
-- Microsoft Excel macro-enabled workbook format (`.xlsm`).
-- SAP GUI Scripting through late-bound COM objects.
-- SAP transaction `ME12` for purchasing info-record maintenance.
-
-### SAP GUI automation points
-
-The macro uses SAP GUI Scripting calls including:
-
-- `GetObject("SAPGUI")` and `GetScriptingEngine` to obtain the SAP scripting object.
-- `Session.FindById(...)` to address SAP controls.
-- `/NME12` to open the transaction.
-- `EINA-LIFNR`, `EINA-MATNR`, `EINE-EKORG`, and `EINE-WERKS` for the record key.
-- `EINA-INFNR` to read the info-record number.
-- `KONP-KBETR[2,0]` to enter the price.
-- `SendVKey 0` for validation and `SendVKey 11` for save.
-- `wnd[0]/sbar` to read the SAP status-bar text and message type.
-
-The SAP objects are declared as generic `Object` variables. No explicit SAP GUI type-library reference was found in the VBA source. The project metadata does include standard Office and `stdole` references.
-
-### Error handling
-
-- A missing SAP connection or session stops the overall run and displays a connection error message.
-- Missing or invalid row inputs are skipped before SAP navigation.
-- Errors raised while processing a valid row are written to column H and do not stop later rows.
-- SAP waits use `Session.Busy`, `DoEvents`, and a 30-second timeout.
-- The macro does not create a separate log file or rollback a SAP change after a later step fails.
-
-## Requirements
-
-- Windows desktop Excel with VBA and macro support.
-- SAP GUI for Windows installed and available to Excel.
-- An active SAP GUI connection and logged-in SAP session.
+- Microsoft Excel VBA and macro-enabled workbooks.
+- SAP GUI Scripting for Windows.
+- Late-bound COM automation through VBA Object variables.
+- SAP transaction ME12.
+- Windows desktop Excel with VBA support.
+- An active logged-in SAP GUI session.
 - SAP GUI Scripting enabled on the client and SAP server.
-- Authorization to access transaction `ME12` and change the relevant purchasing info records.
-- A workbook whose SAP screen layout matches the control IDs used by the macro.
+- Authorization to access ME12 and change the relevant purchasing info records.
+- A workbook and SAP screen layout compatible with the hard-coded control IDs.
 
-The macro does not log in to SAP, create a connection, select among multiple SAP sessions, import data from another system, or request additional SAP authorization.
+## Setup from the source-only repository
 
-## Installation and Setup
+1. Clone or download this repository.
+2. Create a blank macro-enabled Excel workbook in a controlled location.
+3. Open the VBA editor and import Module1.bas into a standard VBA module.
+4. Create the worksheet columns shown above.
+5. Add a worksheet shape or button and assign it to SAP_Final_Solution_V2.
+6. Use synthetic data or an approved non-production SAP environment.
+7. Open SAP GUI and leave the intended session active.
+8. Confirm scripting and authorization before testing.
+9. Run one test row first, then review columns F and H.
 
-1. Download or clone the repository.
-2. Use a sanitized `.xlsm` demo workbook for public distribution. Keep the original business workbook outside the repository.
-3. Open the workbook in desktop Excel. If Excel shows Protected View, leave it protected unless the file is trusted and you need to operate the demo.
-4. Open SAP GUI, log in to the intended system, and keep the target session active.
-5. Confirm that SAP GUI Scripting is enabled and that the user is authorized for the intended records.
-6. Populate the input columns using the layout above. Use synthetic values when testing the public demo.
-7. Run one test record in a non-production environment before processing a larger batch.
-8. Click `RUN` and review columns F and H for the info-record number and SAP result.
+Sheet1.cls and ThisWorkbook.cls contain only exported document-module attributes and are not required for the current macro behavior. Do not publish the original business workbook or its embedded OLE/VBA project without sanitizing it.
 
-Do not lower Excel macro-security settings globally. Use a trusted, controlled location or an approved per-file workflow consistent with your organization's security policy.
+Do not lower Excel macro-security settings globally. Use an approved trusted location or per-file process.
 
-## Usage Example
-
-Use synthetic values for demonstrations:
+## Usage example
 
 | Supplier No. | Description | Material Number | Purchasing Org. | Plant | Price |
 |---:|---|---|---:|---:|---:|
 | 100000 | Demo Supplier | DEMO-MAT-001 | 1000 | 1000 | 12.50 |
 
-After the macro runs, SAP returns the info-record number in column F and the SAP status or error message in column H. The real SAP response depends on the connected system, authorizations, master data, and screen configuration.
+The connected SAP system, master data, authorizations, and screen configuration determine the actual response.
 
-## Business Benefits
+## Expected output
 
-- Reduces repetitive Excel-to-SAP data entry.
-- Provides a consistent validation step before SAP navigation.
-- Processes multiple rows from a single worksheet action.
-- Returns the SAP-generated info-record number directly to the working file.
-- Makes successes and failures visible at row level.
-- Continues processing after an individual row error.
-- Helps procurement users spend less time on repetitive transaction navigation.
+| Column | Example result | Meaning |
+|---|---|---|
+| F | <SAP-generated-info-record> | Info-record number read from SAP |
+| H | <SAP status message> | SAP status-bar text or processing result |
 
-The workbook does not include measured time-savings or error-rate metrics. Any quantified business impact should be added only after comparing a controlled manual baseline with production-approved usage.
+For an invalid row, column H may contain a message such as Skipped: Price is blank or invalid. These examples describe the output shape and do not claim a successful SAP run.
 
-## Current Scope and Limitations
+## Error handling and logging
 
-The following behavior is implemented in the reviewed workbook:
+- Missing SAP connection or session: displays a connection-error message and stops the run.
+- Invalid required input: writes a row-level message to column H, fills the row red, and continues.
+- SAP error during a valid row: writes the VBA error number and description to column H, marks the row red, and continues.
+- SAP busy state: waits with Session.Busy, DoEvents, and a 30-second timeout.
+- No separate log file, run ID, timestamp, operator record, or external audit history is generated.
+- The macro does not roll back an SAP change if a later step in the same row fails.
 
-- One worksheet and one manual `RUN` action.
-- The first active SAP connection and first session are used.
-- The last row is determined from column A. Rows after the last non-empty supplier number are not processed.
-- Blank supplier-number rows inside the detected range are skipped as row errors.
-- Column B is not sent to SAP.
-- Price is the only commercial value updated. Currency, price unit, validity dates, condition type, and other purchasing fields are not handled by this macro.
-- SAP control IDs are hard-coded and may require maintenance after SAP GUI layout or transaction changes.
-- SAP changes are not rolled back if a later step fails.
-- Statuses are stored in the workbook only. No external audit log or run history is generated.
-- The workbook does not provide a user form, configuration screen, session selector, retry queue, or automatic scheduling.
+### Known implementation risk
 
-## Suggested Future Improvements
+The current status helper functions use permissive error handling when reading the SAP status bar. If the status bar cannot be read, an empty status can be replaced with Updated successfully. Treat the current output as operator feedback, not as an independent audit record, until this behavior is hardened and validated.
 
-These are recommendations only. They are not implemented in the reviewed workbook.
+## Security and data handling
 
-- Add a preflight check for the active SAP connection, scripting availability, transaction access, and required columns.
-- Add a controlled SAP-session selector instead of always using the first connection and session.
-- Move SAP control IDs, timeout values, and transaction settings into a documented configuration area.
-- Add a run ID, timestamp, operator, and append-only audit log.
-- Add duplicate checks, stronger data-type validation, and explicit handling for gaps in input rows.
-- Add configurable currency, price-unit, validity-date, and condition-field support when the business process requires it.
-- Add retry handling for recoverable SAP timeouts and a reconciliation view for records that need manual review.
-- Add a controlled UserForm for guided input and clearer operator feedback.
-- Add automated test cases using a mock SAP interface or a non-production SAP environment.
-- Add documentation for the exact SAP GUI version, transaction variant, and client/server scripting configuration.
+- No credentials, passwords, tokens, or connection strings are present in the tracked VBA source.
+- The sample CSV uses demonstration-looking values.
+- Keep supplier, material, plant, price, SAP system, user, screenshot, and log data private unless approved and sanitized.
+- Test with synthetic data or an approved non-production SAP environment before changing live records.
+- The macro writes to SAP; confirm the active workbook, SAP connection, SAP session, and target data before running it.
 
-## Recommended Repository Structure
+## Current limitations
 
-```text
-excel-vba-sap-info-record-updater/
-├── README.md
-├── LICENSE
-├── workbook/
-│   └── INFORECORD_UPDATION_demo.xlsm
-├── src/
-│   ├── Module1.bas
-│   ├── Sheet1.cls
-│   └── ThisWorkbook.cls
-├── data/
-│   └── sample_input.csv
-├── screenshots/
-│   ├── 01-input-template.png
-│   ├── 02-run-button.png
-│   ├── 03-processing-status.png
-│   └── 04-success-and-error-results.png
-└── docs/
-    ├── workflow.md
-    └── sap-gui-scripting-prerequisites.md
-```
+- No runnable XLSM workbook is included.
+- The macro uses the active worksheet and the first SAP connection/session.
+- SAP control IDs are hard-coded.
+- The last row is determined only from column A.
+- Currency, price unit, validity dates, condition type, and other purchasing fields are not handled.
+- There is no session selector, dry-run mode, retry queue, external audit log, or rollback.
+- No automated tests or measured business metrics are included.
 
-### Files suitable for GitHub
+## Future improvements
 
-- `README.md` and workflow documentation.
-- Exported VBA source modules, if company policy permits publishing the code.
-- A sanitized `.xlsm` demonstration workbook with synthetic data.
-- Synthetic sample input data and sanitized screenshots.
-- A license selected by the project owner.
+These items are not implemented:
 
-### Files to keep private or remove before publishing
+- Add preflight checks and explicit SAP-session selection.
+- Replace permissive status handling with explicit success/failure confirmation.
+- Move control IDs and mappings into documented configuration.
+- Add stronger validation for Excel error values, price rules, duplicates, and blank-row gaps.
+- Add recoverable timeout handling, reconciliation, and an append-only run log where policy permits.
+- Add mock-based tests for validation and output-writing logic.
+- Add sanitized screenshots and a demonstration workbook only after review.
 
-- The original workbook containing live or company-specific supplier, material, plant, purchasing-organization, info-record, price, and status data.
-- SAP system names, hostnames, client numbers, usernames, screenshots, or exported logs.
-- Workbook metadata such as author names, company names, SharePoint paths, document IDs, and revision identifiers.
-- Any credentials, tokens, passwords, or connection strings. No plaintext SAP credential was found in the extracted VBA source, but the workbook contains VBA project-protection metadata and should still be treated as internal until sanitized.
-- Unsanitized `vbaProject.bin` or an unreviewed copy of the original `.xlsm`.
+## Screenshots and portfolio summary
 
-## Suggested Screenshots
+No screenshots are currently included. Suggested sanitized additions are an input worksheet, RUN button, processing status, completed output, and redacted ME12 screen. Never include supplier data, company names, SAP identifiers, usernames, client numbers, live screenshots, or exported logs without approval and sanitization.
 
-Use synthetic or redacted data in every screenshot:
+> Developed an Excel VBA automation that batch-updates SAP purchasing info records through SAP GUI Scripting. Implemented structured input validation, SAP transaction navigation, price updates, status capture, row-level error handling, and color-coded results to reduce repetitive procurement-maintenance work and improve processing visibility.
 
-1. The input worksheet showing the required columns and a few demo rows.
-2. The `RUN` button positioned beside the input table.
-3. A processing state showing `Processing...` in column H.
-4. A completed run showing a returned info-record number, green success cells, and a red validation error on a separate demo row.
-5. A sanitized SAP `ME12` screen showing the navigation stage without system identifiers or business data.
-6. A simple workflow image or Mermaid diagram explaining Excel input, SAP update, and Excel output.
+## License and disclaimer
 
-## Resume and Portfolio Description
+No open-source license is currently included. Select a license that matches the ownership and publication rights for the VBA source before allowing reuse.
 
-Developed an Excel VBA automation that batch-updates SAP purchasing info records through SAP GUI Scripting. Implemented structured input validation, SAP transaction navigation, price updates, status capture, per-row error handling, and color-coded results to reduce repetitive procurement-maintenance work and improve processing visibility.
-
-## License and Disclaimer
-
-Select a license that matches the ownership and publication rights for the VBA source and workbook. This project is an automation example and must be tested with synthetic data or an approved non-production SAP environment before use against live records.
+Test this automation with synthetic data or an approved non-production SAP environment before using it against live records.
